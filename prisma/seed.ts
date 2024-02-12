@@ -123,7 +123,7 @@ async function seedDatabase() {
                 id: barbershop.id,
               },
             },
-            imageUrl: service.imageUrl, // Adicionando o campo imageUrl para cada serviço
+            imageUrl: service.imageUrl, 
           },
         });
       }
