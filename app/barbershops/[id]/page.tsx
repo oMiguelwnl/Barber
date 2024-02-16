@@ -14,6 +14,7 @@ const BarbershopDetailsPage = async ({
   params,
 }: BarbershopDetailsPageProps) => {
   const session = await getServerSession(authOptions);
+
   if (!params.id) {
     // TODO: redirecionar para home page
     return null;
@@ -41,6 +42,7 @@ const BarbershopDetailsPage = async ({
         {barbershop.services.map((service) => (
           <ServiceItem
             key={service.id}
+            barbershop={barbershop}
             service={service}
             isAuthenticated={!!session?.user}
           />
