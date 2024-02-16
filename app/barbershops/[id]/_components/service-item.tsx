@@ -1,6 +1,18 @@
 "use client";
+
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useState, useMemo } from "react";
+import { ptBR } from "date-fns/locale";
+import { format, setHours, setMinutes } from "date-fns";
+import { signIn, useSession } from "next-auth/react";
+import Image from "next/image";
+import { generateDayTimeList } from "../_helpers/hours";
+import { saveBooking } from "../_actions/save-booking";
 import { Button } from "@/app/components/ui/button";
 import { Card, CardContent } from "@/app/components/ui/card";
+import { Calendar } from "@/app/components/ui/calendar";
 import {
   Sheet,
   SheetContent,
@@ -10,15 +22,6 @@ import {
   SheetTrigger,
 } from "@/app/components/ui/sheet";
 import { Barbershop, Service } from "@prisma/client";
-import { signIn, useSession } from "next-auth/react";
-import Image from "next/image";
-import { Calendar } from "@/app/components/ui/calendar";
-import { useMemo, useState } from "react";
-import { ptBR } from "date-fns/locale";
-import { generateDayTimeList } from "../_helpers/hours";
-import { format, setHours, setMinutes } from "date-fns";
-import { saveBooking } from "../_actions/save-booking";
-import { Loader2 } from "lucide-react";
 
 interface ServiceItemProps {
   barbershop: Barbershop;
@@ -34,7 +37,8 @@ const ServiceItem = ({
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [hour, setHour] = useState<string | undefined>();
   const [submitIsLoading, setSubmitIsLoading] = useState(false);
-
+  const [sheetIsOpen, setSheetIsOpen] = useState(false);
+  const router = useRouter();
   const { data } = useSession();
 
   const handleDateClick = (date: Date | undefined) => {
@@ -50,20 +54,18 @@ const ServiceItem = ({
     if (!isAuthenticated) {
       return signIn("google");
     }
-
-    // TODO abrir modal de agendamento
+    setSheetIsOpen(true);
   };
 
   const handleBookingSubmit = async () => {
+    if (!hour || !date || !data?.user) {
+      return;
+    }
+
     setSubmitIsLoading(true);
     try {
-      if (!hour || !date || !data?.user) {
-        return;
-      }
-
       const dateHour = Number(hour.split(":")[0]);
       const dateMinutes = Number(hour.split(":")[1]);
-
       const newDate = setMinutes(setHours(date, dateHour), dateMinutes);
 
       await saveBooking({
@@ -72,8 +74,25 @@ const ServiceItem = ({
         date: newDate,
         userId: (data.user as any).id,
       });
+
+      setSheetIsOpen(false);
+      setHour(undefined);
+      setDate(undefined);
+
+      toast("Reserva realizada com sucesso!", {
+        description: format(newDate, "'Para' dd 'de' MMMM 'às' HH':'mm'.'", {
+          locale: ptBR,
+        }),
+        action: {
+          label: "Visualizar",
+          onClick: () => router.push("/bookings"),
+        },
+      });
     } catch (error) {
       console.error(error);
+      toast.error(
+        "Erro ao realizar reserva. Por favor, tente novamente mais tarde."
+      );
     } finally {
       setSubmitIsLoading(false);
     }
@@ -108,7 +127,7 @@ const ServiceItem = ({
                   currency: "BRL",
                 }).format(Number(service.price))}
               </p>
-              <Sheet>
+              <Sheet open={sheetIsOpen} onOpenChange={setSheetIsOpen}>
                 <SheetTrigger asChild>
                   <Button variant="secondary" onClick={handleBookingClick}>
                     Reservar
@@ -153,7 +172,6 @@ const ServiceItem = ({
                     />
                   </div>
 
-                  {/* Mostrar lista de horários apenas se alguma data estiver selecionada */}
                   {date && (
                     <div className="flex gap-3 overflow-x-auto py-6 px-5 border-t border-solid border-secondary [&::-webkit-scrollbar]:hidden">
                       {timeList.map((time) => (
@@ -175,7 +193,6 @@ const ServiceItem = ({
                         <div className="flex justify-between">
                           <h2 className="font-bold">{service.name}</h2>
                           <h3 className="font-bold text-sm">
-                            {" "}
                             {Intl.NumberFormat("pt-BR", {
                               style: "currency",
                               currency: "BRL",
@@ -215,7 +232,7 @@ const ServiceItem = ({
                       disabled={!hour || !date || submitIsLoading}
                     >
                       {submitIsLoading && (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin"></Loader2>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       )}
                       Confirmar reserva
                     </Button>
