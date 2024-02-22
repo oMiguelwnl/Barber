@@ -1,18 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { useState, useMemo, useEffect } from "react";
-import { ptBR } from "date-fns/locale";
-import { addDays, format, setHours, setMinutes } from "date-fns";
-import { signIn, useSession } from "next-auth/react";
-import Image from "next/image";
-import { generateDayTimeList } from "../_helpers/hours";
-import { saveBooking } from "../_actions/save-booking";
 import { Button } from "@/app/components/ui/button";
-import { Card, CardContent } from "@/app/components/ui/card";
 import { Calendar } from "@/app/components/ui/calendar";
+import { Card, CardContent } from "@/app/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -22,6 +12,17 @@ import {
   SheetTrigger,
 } from "@/app/components/ui/sheet";
 import { Barbershop, Booking, Service } from "@prisma/client";
+import { ptBR } from "date-fns/locale";
+import { signIn, useSession } from "next-auth/react";
+import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { generateDayTimeList } from "../_helpers/hours";
+import { addDays, format, setHours, setMinutes } from "date-fns";
+import { saveBooking } from "../_actions/save-booking";
+import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
+import BookingInfo from "@/app/_components/booking-info";
 import { getDayBookings } from "../_actions/get-day-booking";
 
 interface ServiceItemProps {
@@ -32,9 +33,13 @@ interface ServiceItemProps {
 
 const ServiceItem = ({
   service,
-  isAuthenticated,
   barbershop,
+  isAuthenticated,
 }: ServiceItemProps) => {
+  const router = useRouter();
+
+  const { data } = useSession();
+
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [hour, setHour] = useState<string | undefined>();
   const [submitIsLoading, setSubmitIsLoading] = useState(false);
@@ -54,9 +59,6 @@ const ServiceItem = ({
     refreshAvailableHours();
   }, [date, barbershop.id]);
 
-  const router = useRouter();
-  const { data } = useSession();
-
   const handleDateClick = (date: Date | undefined) => {
     setDate(date);
     setHour(undefined);
@@ -70,18 +72,19 @@ const ServiceItem = ({
     if (!isAuthenticated) {
       return signIn("google");
     }
-    setSheetIsOpen(true);
   };
 
   const handleBookingSubmit = async () => {
-    if (!hour || !date || !data?.user) {
-      return;
-    }
-
     setSubmitIsLoading(true);
+
     try {
+      if (!hour || !date || !data?.user) {
+        return;
+      }
+
       const dateHour = Number(hour.split(":")[0]);
       const dateMinutes = Number(hour.split(":")[1]);
+
       const newDate = setMinutes(setHours(date, dateHour), dateMinutes);
 
       await saveBooking({
@@ -94,7 +97,6 @@ const ServiceItem = ({
       setSheetIsOpen(false);
       setHour(undefined);
       setDate(undefined);
-
       toast("Reserva realizada com sucesso!", {
         description: format(newDate, "'Para' dd 'de' MMMM 'às' HH':'mm'.'", {
           locale: ptBR,
@@ -106,9 +108,6 @@ const ServiceItem = ({
       });
     } catch (error) {
       console.error(error);
-      toast.error(
-        "Erro ao realizar reserva. Por favor, tente novamente mais tarde."
-      );
     } finally {
       setSubmitIsLoading(false);
     }
@@ -208,6 +207,7 @@ const ServiceItem = ({
                     />
                   </div>
 
+                  {/* Mostrar lista de horários apenas se alguma data estiver selecionada */}
                   {date && (
                     <div className="flex gap-3 overflow-x-auto py-6 px-5 border-t border-solid border-secondary [&::-webkit-scrollbar]:hidden">
                       {timeList.map((time) => (
@@ -224,45 +224,22 @@ const ServiceItem = ({
                   )}
 
                   <div className="py-6 px-5 border-t border-solid border-secondary">
-                    <Card>
-                      <CardContent className="p-3 gap-3 flex flex-col">
-                        <div className="flex justify-between">
-                          <h2 className="font-bold">{service.name}</h2>
-                          <h3 className="font-bold text-sm">
-                            {Intl.NumberFormat("pt-BR", {
-                              style: "currency",
-                              currency: "BRL",
-                            }).format(Number(service.price))}
-                          </h3>
-                        </div>
-
-                        {date && (
-                          <div className="flex justify-between">
-                            <h3 className="text-gray-400 text-sm">Data</h3>
-                            <h4 className="text-sm">
-                              {format(date, "dd 'de' MMMM", {
-                                locale: ptBR,
-                              })}
-                            </h4>
-                          </div>
-                        )}
-
-                        {hour && (
-                          <div className="flex justify-between">
-                            <h3 className="text-gray-400 text-sm">Horário</h3>
-                            <h4 className="text-sm">{hour}</h4>
-                          </div>
-                        )}
-
-                        <div className="flex justify-between">
-                          <h3 className="text-gray-400 text-sm">Barbearia</h3>
-                          <h4 className="text-sm">{barbershop.name}</h4>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <BookingInfo
+                      booking={{
+                        barbershop: barbershop,
+                        date:
+                          date && hour
+                            ? setMinutes(
+                                setHours(date, Number(hour.split(":")[0])),
+                                Number(hour.split(":")[1])
+                              )
+                            : undefined,
+                        service: service,
+                      }}
+                    />
                   </div>
 
-                  <SheetFooter className="px-3">
+                  <SheetFooter className="px-5">
                     <Button
                       onClick={handleBookingSubmit}
                       disabled={!hour || !date || submitIsLoading}

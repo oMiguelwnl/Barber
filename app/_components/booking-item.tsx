@@ -1,4 +1,5 @@
 "use client";
+
 import { Prisma } from "@prisma/client";
 import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
 import { Badge } from "../components/ui/badge";
@@ -32,6 +33,8 @@ import {
   AlertDialogTrigger,
 } from "../components/ui/alert-dialog";
 
+import BookingInfo from "./booking-info";
+
 interface BookingItemProps {
   booking: Prisma.BookingGetPayload<{
     include: {
@@ -43,6 +46,7 @@ interface BookingItemProps {
 
 const BookingItem = ({ booking }: BookingItemProps) => {
   const [isDeleteLoading, setIsDeleteLoading] = useState(false);
+
   const isBookingConfirmed = isFuture(booking.date);
 
   const handleCancelClick = async () => {
@@ -71,16 +75,16 @@ const BookingItem = ({ booking }: BookingItemProps) => {
               >
                 {isBookingConfirmed ? "Confirmado" : "Finalizado"}
               </Badge>
-
-              <h2 className="font-bold ">{booking.service.name}</h2>
+              <h2 className="font-bold">{booking.service.name}</h2>
 
               <div className="flex items-center gap-2">
                 <Avatar className="h-6 w-6">
                   <AvatarImage src={booking.barbershop.imageUrl} />
+
                   <AvatarFallback>A</AvatarFallback>
                 </Avatar>
 
-                <h3 className="text-sm ">{booking.barbershop.name}</h3>
+                <h3 className="text-sm">{booking.barbershop.name}</h3>
               </div>
             </div>
 
@@ -103,18 +107,20 @@ const BookingItem = ({ booking }: BookingItemProps) => {
         </SheetHeader>
 
         <div className="px-5">
-          <div className="relative h-[180px] w-full mt-6 ">
+          <div className="relative h-[180px] w-full mt-6">
             <Image
               src="/barbershop-map.png"
-              alt={booking.barbershop.name}
               fill
+              alt={booking.barbershop.name}
             />
+
             <div className="w-full absolute bottom-4 left-0 px-5">
               <Card>
                 <CardContent className="p-3 flex gap-2">
                   <Avatar>
                     <AvatarImage src={booking.barbershop.imageUrl} />
                   </Avatar>
+
                   <div>
                     <h2 className="font-bold">{booking.barbershop.name}</h2>
                     <h3 className="text-xs overflow-hidden text-nowrap text-ellipsis">
@@ -133,40 +139,9 @@ const BookingItem = ({ booking }: BookingItemProps) => {
             {isBookingConfirmed ? "Confirmado" : "Finalizado"}
           </Badge>
 
-          <Card>
-            <CardContent className="p-3 gap-3 flex flex-col">
-              <div className="flex justify-between">
-                <h2 className="font-bold">{booking.service.name}</h2>
-                <h3 className="font-bold text-sm">
-                  {Intl.NumberFormat("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  }).format(Number(booking.service.price))}
-                </h3>
-              </div>
+          <BookingInfo booking={booking} />
 
-              <div className="flex justify-between">
-                <h3 className="text-gray-400 text-sm">Data</h3>
-                <h4 className="text-sm">
-                  {format(booking.date, "dd 'de' MMMM", {
-                    locale: ptBR,
-                  })}
-                </h4>
-              </div>
-
-              <div className="flex justify-between">
-                <h3 className="text-gray-400 text-sm">Horário</h3>
-                <h4 className="text-sm">{format(booking.date, "hh:mm")}</h4>
-              </div>
-
-              <div className="flex justify-between">
-                <h3 className="text-gray-400 text-sm">Barbearia</h3>
-                <h4 className="text-sm">{booking.barbershop.name}</h4>
-              </div>
-            </CardContent>
-          </Card>
-
-          <SheetFooter className="flex-row gap-3 mt-3">
+          <SheetFooter className="flex-row gap-3 mt-6">
             <SheetClose asChild>
               <Button className="w-full" variant="secondary">
                 Voltar
